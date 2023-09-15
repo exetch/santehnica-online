@@ -17,6 +17,7 @@ if __name__ == "__main__":
         json_match = re.search(r'\{.*\}', match).group()
         data_dict = json.loads(json_match)
 
+
     with open('data_vanny.json', 'w', encoding='utf-8') as json_file:
         json.dump(data_dict, json_file, ensure_ascii=False, indent=4)
 

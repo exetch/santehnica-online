@@ -61,6 +61,7 @@ if __name__ == "__main__":
         worksheet_lvl1.write(row, col, item['title'])
         worksheet_lvl1.write(row, col + 1, item['href'])
         row += 1
+
     links_data_lvl2 = get_links_data([(item['title'], item['href']) for item in links_data_lvl1])
     worksheet_lvl2 = workbook.add_worksheet('3_lvl')
     row = 0
