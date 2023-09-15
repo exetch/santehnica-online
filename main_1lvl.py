@@ -6,7 +6,6 @@ import json
 if __name__ == "__main__":
     driver = webdriver.Chrome()
     driver.maximize_window()
-
     url = "https://santehnika-online.ru/vanny/"
     driver.get(url)
     page_source = driver.page_source
