@@ -12,7 +12,7 @@ working_directory = URL.rstrip('/').split('/')[-1]
 WORKING_LINKS_1LVL = f'working_links_{working_directory}_1lvl.json'
 WORKING_LINKS_2LVL = f'working_links_{working_directory}_2lvl.json'
 WORKING_LINKS_3LVL = f'working_links_{working_directory}_3lvl.json'
-EXCEL_FILE = f'combined_links_{working_directory}_test.xlsx'
+EXCEL_FILE = f'combined_links_{working_directory}.xlsx'
 def count_elements_in_json_file(file_path):
     try:
         with open(file_path, 'r', encoding='utf-8') as json_file:
