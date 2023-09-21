@@ -114,6 +114,8 @@ def data_processing_3lvl_parallel(working_links_1lvl, working_links_1lv2, file_o
     working_links = {}
     processed_links = 0
     good_links = 0
+    last_progress_time = time.time()
+
 
     with ThreadPoolExecutor(max_workers=num_threads) as executor:
         futures = {executor.submit(process_link, link, working_links): link for link in links_to_check}
@@ -122,9 +124,12 @@ def data_processing_3lvl_parallel(working_links_1lvl, working_links_1lv2, file_o
             if future.result():
                 good_links += 1
                 processed_links += 1
+            current_time = time.time()
+            if current_time - last_progress_time >= 5:
                 progress_percent = (processed_links / len(links_to_check)) * 100
                 print(f"Прогресс: {progress_percent:.2f}% ({processed_links}/{len(links_to_check)})")
                 print(f"Всего рабочих ссылок {good_links} ")
+                last_progress_time = current_time
 
     # Сохранение рабочих ссылок третьего уровня в файл
     with open(file_output, 'w', encoding='utf-8') as json_file:
