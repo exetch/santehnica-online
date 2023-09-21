@@ -45,7 +45,6 @@ def process_link(link, working_links):
 
         # Проверяем <title> на странице на наличие "404 Not Found"
         if driver.title == "404 Not Found":
-            print(f"Ссылка не существует: {link}")
             return None
 
         # Получаем HTML-код страницы
@@ -97,7 +96,6 @@ def data_processing_2lvl_parallel(file_input, file_output, parent_url, num_threa
     # Построение полных ссылок для проверки
     links_to_check = [f"{parent_url}{first}/{second}/" for first, second
                       in filtered_permutations]
-
     working_links = {}
     processed_links = 0
     good_links = 0
@@ -107,9 +105,9 @@ def data_processing_2lvl_parallel(file_input, file_output, parent_url, num_threa
         futures = {executor.submit(process_link, link, working_links): link for link in links_to_check}
         for future in futures:
             future.result()
+            processed_links += 1
             if future.result():
                 good_links += 1
-                processed_links += 1
             current_time = time.time()
 
             # Вывод прогресса каждые 5 секунд
