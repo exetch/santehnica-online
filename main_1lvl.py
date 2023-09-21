@@ -1,15 +1,18 @@
 from selenium import webdriver
 from bs4 import BeautifulSoup
-from main_2lvl import data_processing_2lvl
-from main_3lvl import data_processing_3lvl
+from main_2lvl import data_processing_2lvl_parallel
+from main_3lvl import data_processing_3lvl_parallel
 from to_exel import save_to_excel
 import re
 import json
 import time
-WORKING_LINKS_1LVL = 'working_links_1lvl.json'
-WORKING_LINKS_2LVL = 'working_links_2lvl.json'
-WORKING_LINKS_3LVL = 'working_links_3lvl.json'
-EXCEL_FILE = 'combined_links.xlsx'
+
+URL = "https://santehnika-online.ru/dushevye_ograzhdeniya/ugolki/"
+working_directory = URL.rstrip('/').split('/')[-1]
+WORKING_LINKS_1LVL = f'working_links_{working_directory}_1lvl.json'
+WORKING_LINKS_2LVL = f'working_links_{working_directory}_2lvl.json'
+WORKING_LINKS_3LVL = f'working_links_{working_directory}_3lvl.json'
+EXCEL_FILE = f'combined_links_{working_directory}_test.xlsx'
 def count_elements_in_json_file(file_path):
     try:
         with open(file_path, 'r', encoding='utf-8') as json_file:
@@ -19,23 +22,33 @@ def count_elements_in_json_file(file_path):
         return 0
 
 if __name__ == "__main__":
+    # Запускаем таймер для измерения времени выполнения
     start_time = time.time()
 
+    # Создаем новый веб-драйвер Chrome и открываем указанный URL
     driver = webdriver.Chrome()
     driver.maximize_window()
-    url = "https://santehnika-online.ru/dushevye_ograzhdeniya/dushevye_poddony/"
+    url = URL
     driver.get(url)
+
+    # Получаем HTML-код страницы
     page_source = driver.page_source
+
+    # Закрываем веб-драйвер
     driver.quit()
+
+    # Создаем объект BeautifulSoup для парсинга HTML
     soup = BeautifulSoup(page_source, 'html.parser')
+
+    # Используем регулярное выражение для извлечения данных из JavaScript объекта
     pattern = r'var __SD__ = {"Location":{"option":.*?};'
     matches = re.findall(pattern, str(soup))
+
     for match in matches:
         json_match = re.search(r'\{.*\}', match).group()
         data_dict = json.loads(json_match)
 
-    #ACHTUNG!!!!Здесь нужно быть осторожным!!! Смотреть получаемый data_dict и в нем искать словри с сылками, они могут быть разные в разных категориях!!!
-
+    # Выбираем интересующие нас данные из data_dict
     selected_data = {
         'catalogPopularBrandsMaster': data_dict.get('catalogPopularBrandsMaster'),
         'popularManufacturers': data_dict.get('popularManufacturers'),
@@ -43,34 +56,45 @@ if __name__ == "__main__":
     }
     result_dict = {}
 
+    # Обрабатываем данные о популярных брендах
     for item in selected_data['catalogPopularBrandsMaster']['data']['items']:
         link_parts = item['link'].split("/")
         title = item.get('title', '')
         result_dict[title] = url + link_parts[-2]
 
+    # Обрабатываем данные о популярных производителях
     for item in selected_data['popularManufacturers']['data']['items']:
         link_parts = item['link'].split("/")
         title = item.get('title', '')
         result_dict[title] = url + link_parts[-2]
 
+    # Обрабатываем данные о популярных категориях
     for category in selected_data['catalogPopularCategories']['data']['items']:
         for item in category['items']:
             link_parts = item['link'].split("/")
             title = item.get('title', '')
             result_dict[title] = url + link_parts[-2]
-    with open('working_links_1lvl.json', 'w', encoding='utf-8') as new_json_file:
+
+    # Сохраняем данные о первом уровне ссылок в файл JSON
+    with open(WORKING_LINKS_1LVL, 'w', encoding='utf-8') as new_json_file:
         json.dump(result_dict, new_json_file, ensure_ascii=False, indent=4)
-    print("Первый уровень ссылок успешно сохранен в working_links_1lvl.json")
-    data_processing_2lvl(WORKING_LINKS_1LVL, WORKING_LINKS_2LVL)
-    data_processing_3lvl(WORKING_LINKS_1LVL, WORKING_LINKS_2LVL, WORKING_LINKS_3LVL)
+    print(f"Первый уровень ссылок успешно сохранен в {WORKING_LINKS_1LVL}")
+
+    # Обрабатываем ссылки второго и третьего уровней параллельно
+    data_processing_2lvl_parallel(WORKING_LINKS_1LVL, WORKING_LINKS_2LVL, URL)
+    data_processing_3lvl_parallel(WORKING_LINKS_1LVL, WORKING_LINKS_2LVL, WORKING_LINKS_3LVL)
+
+    # Считаем количество обработанных ссылок на каждом уровне и общее количество
     count_1lvl = count_elements_in_json_file(WORKING_LINKS_1LVL)
     count_2lvl = count_elements_in_json_file(WORKING_LINKS_2LVL)
     count_3lvl = count_elements_in_json_file(WORKING_LINKS_3LVL)
     count_total = count_1lvl + count_2lvl + count_3lvl
+
+    # Сохраняем данные в Excel файл
     save_to_excel(WORKING_LINKS_1LVL, WORKING_LINKS_2LVL, WORKING_LINKS_3LVL, EXCEL_FILE)
+
+    # Завершаем таймер и выводим информацию о времени выполнения и общем количестве ссылок
     end_time = time.time()
-
     elapsed_time = end_time - start_time
-
-    print(f"Время выполнения скрипта: {elapsed_time} секнуд")
+    print(f"Время выполнения скрипта: {elapsed_time} секунд")
     print(f"Всего найдено {count_total} ссылок")
