@@ -24,14 +24,14 @@ def process_link(link, working_links):
         driver.get(link)
         time.sleep(2)
 
+        # Проверяем <title> на странице
+        if driver.title == "404 Not Found":
+            print(f"Ссылка не существует: {link}")
+            return
+
         # Получаем HTML-код страницы
         page_source = driver.page_source
         soup = BeautifulSoup(page_source, 'html.parser')
-
-        # Проверяем наличие элемента с классом "ZZaEylgLCDvuUySCw8dL heading--lg text--bold"
-        error_element = soup.find('div', class_='ZZaEylgLCDvuUySCw8dL heading--lg text--bold')
-        if error_element:
-            print(f"Ссылка не существует: {link}")
 
         # Ищем элемент с классом "b-title b-title--h1" и извлекаем текст из него
         title_element = soup.find('h1', class_='b-title b-title--h1')
@@ -39,6 +39,7 @@ def process_link(link, working_links):
             title = title_element.find('span').text.strip()
             working_links[title] = link
             print(f"Рабочая ссылка: {link}")
+            return link
 
     except Exception as e:
         pass
@@ -57,11 +58,19 @@ def data_processing_2lvl_parallel(file_input, file_output, parent_url, num_threa
     links_to_check = [f"{parent_url}{first}/{second}/" for first, second
                       in filtered_permutations]
     working_links = {}
+    processed_links = 0
+    good_links = 0
 
     with ThreadPoolExecutor(max_workers=num_threads) as executor:
         futures = {executor.submit(process_link, link, working_links): link for link in links_to_check}
         for future in futures:
             future.result()
+            if future.result():
+                good_links += 1
+                processed_links += 1
+                progress_percent = (processed_links / len(links_to_check)) * 100
+                print(f"Прогресс: {progress_percent:.2f}% ({processed_links}/{len(links_to_check)})")
+                print(f"Всего рабочих ссылок {good_links} ")
 
     with open(file_output, 'w', encoding='utf-8') as json_file:
         json.dump(working_links, json_file, ensure_ascii=False, indent=4)
