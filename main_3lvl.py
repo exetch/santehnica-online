@@ -51,7 +51,6 @@ def process_link(link, working_links):
 
         # Проверяем <title> на странице на наличие "404 Not Found"
         if driver.title == "404 Not Found":
-            print(f"Ссылка не существует: {link}")
             return None
 
         # Получаем HTML-код страницы
@@ -116,15 +115,16 @@ def data_processing_3lvl_parallel(working_links_1lvl, working_links_1lv2, file_o
     good_links = 0
     last_progress_time = time.time()
 
-
     with ThreadPoolExecutor(max_workers=num_threads) as executor:
         futures = {executor.submit(process_link, link, working_links): link for link in links_to_check}
         for future in futures:
             future.result()
+            processed_links += 1
             if future.result():
                 good_links += 1
-                processed_links += 1
             current_time = time.time()
+
+            # Вывод прогресса каждые 5 секунд
             if current_time - last_progress_time >= 5:
                 progress_percent = (processed_links / len(links_to_check)) * 100
                 print(f"Прогресс: {progress_percent:.2f}% ({processed_links}/{len(links_to_check)})")

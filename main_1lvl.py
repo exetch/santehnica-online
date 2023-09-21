@@ -7,7 +7,7 @@ import re
 import json
 import time
 
-URL = "https://santehnika-online.ru/dushevye_ograzhdeniya/ugolki/"
+URL = "https://santehnika-online.ru/unitazy/"
 working_directory = URL.rstrip('/').split('/')[-1]
 WORKING_LINKS_1LVL = f'working_links_{working_directory}_1lvl.json'
 WORKING_LINKS_2LVL = f'working_links_{working_directory}_2lvl.json'
@@ -47,6 +47,8 @@ if __name__ == "__main__":
     for match in matches:
         json_match = re.search(r'\{.*\}', match).group()
         data_dict = json.loads(json_match)
+    # with open('check_unitazov.json', 'w', encoding='utf-8') as file:
+    #     json.dump(data_dict, file, ensure_ascii=False, indent=4)
 
     # Выбираем интересующие нас данные из data_dict
     selected_data = {
