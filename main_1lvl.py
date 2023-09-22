@@ -2,7 +2,6 @@ from selenium import webdriver
 from bs4 import BeautifulSoup
 from main_2lvl import data_processing_2lvl_parallel
 from main_3lvl import data_processing_3lvl_parallel
-from multiprocessing_2lvl import data_processing_2lvl_multiprocessing
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from to_exel import save_to_excel
