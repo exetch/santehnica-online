@@ -4,6 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 from bs4 import BeautifulSoup
 from selenium import webdriver
 import time
+from selenium.webdriver.chrome.options import Options
 
 # Функция для проверки наличия размеров или "_sm" в ссылке и значении
 def has_size_or_sm_pattern(link, value):
@@ -44,8 +45,13 @@ def process_link(link, working_links):
         str or None: Возвращает рабочую ссылку или None, если ссылка не существует.
     """
     try:
-        # Создаем экземпляр браузера
-        driver = webdriver.Chrome()
+        chrome_options = Options()
+        chrome_options.add_argument(
+            'user_agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36')
+        chrome_options.add_argument('--headless')  # Включаем headless режим
+
+        # Создаем экземпляр браузера с опциями
+        driver = webdriver.Chrome(options=chrome_options)
         driver.get(link)
         time.sleep(2)
 
@@ -72,7 +78,7 @@ def process_link(link, working_links):
         driver.quit()
 
 
-def data_processing_3lvl_parallel(working_links_1lvl, working_links_1lv2, file_output, num_threads=5):
+def data_processing_3lvl_parallel(working_links_1lvl, working_links_1lv2, file_output, num_threads=6):
     """
     Обрабатывает ссылки третьего уровня, используя рабочие ссылки первого и второго уровней,
     и сохраняет рабочие ссылки третьего уровня в файл.
@@ -109,27 +115,26 @@ def data_processing_3lvl_parallel(working_links_1lvl, working_links_1lv2, file_o
                 filtered_links[new_link_name] = new_link_url
 
     links_to_check = list(filtered_links.values())
-
+    batches = [links_to_check[i:i + 1000] for i in range(0, len(links_to_check), 1000)]
     working_links = {}
     processed_links = 0
     good_links = 0
-    last_progress_time = time.time()
 
     with ThreadPoolExecutor(max_workers=num_threads) as executor:
-        futures = {executor.submit(process_link, link, working_links): link for link in links_to_check}
-        for future in futures:
-            future.result()
-            processed_links += 1
-            if future.result():
-                good_links += 1
-            current_time = time.time()
-
-            # Вывод прогресса каждые 5 секунд
-            if current_time - last_progress_time >= 5:
+        for batch in batches:
+            batch_working_links = {}
+            futures = {executor.submit(process_link, link, batch_working_links): link for link in batch}
+            for future in futures:
+                future.result()
+                processed_links += 1
+                if future.result():
+                    good_links += 1
                 progress_percent = (processed_links / len(links_to_check)) * 100
                 print(f"Прогресс: {progress_percent:.2f}% ({processed_links}/{len(links_to_check)})")
                 print(f"Всего рабочих ссылок {good_links} ")
-                last_progress_time = current_time
+            working_links.update(batch_working_links)
+            del futures
+            del batch
 
     # Сохранение рабочих ссылок третьего уровня в файл
     with open(file_output, 'w', encoding='utf-8') as json_file:
