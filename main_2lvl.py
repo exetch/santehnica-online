@@ -5,6 +5,7 @@ from selenium import webdriver
 import time
 from bs4 import BeautifulSoup
 from concurrent.futures import ThreadPoolExecutor
+from selenium.webdriver.chrome.options import Options
 
 
 def both_values_are_sizes(combination):
@@ -38,8 +39,8 @@ def process_link(link, working_links):
         str or None: Возвращает рабочую ссылку или None, если ссылка не существует.
     """
     try:
-        # Создаем экземпляр браузера
         driver = webdriver.Chrome()
+
         driver.get(link)
         time.sleep(2)
 
@@ -65,7 +66,7 @@ def process_link(link, working_links):
         # Закрываем браузер после завершения обработки
         driver.quit()
 
-def data_processing_2lvl_parallel(file_input, file_output, parent_url, num_threads=5):
+def data_processing_2lvl_parallel(file_input, file_output, parent_url, num_threads=6):
     """
     Обрабатывает ссылки второго уровня параллельно, используя множество потоков,
     и сохраняет рабочие ссылки в файл.
@@ -83,41 +84,41 @@ def data_processing_2lvl_parallel(file_input, file_output, parent_url, num_threa
     with open(file_input, 'r', encoding='utf-8') as file:
         data_dict = json.load(file)
 
-    # Извлечение значений из ссылок первого уровня
-    values_list = [link.split("/")[-1] for link in data_dict.values()]
+        # Извлечение значений из ссылок первого уровня
+        values_list = [link.split("/")[-1] for link in data_dict.values()]
 
-    # Создание всех возможных комбинаций пар значений
-    permutations_list = list(permutations(values_list, 2))
+        # Создание всех возможных комбинаций пар значений
+        permutations_list = list(permutations(values_list, 2))
 
-    # Фильтрация комбинаций: исключение "brand" и комбинаций с размерами или "sm"
-    filtered_permutations = [combo for combo in permutations_list if
-                             not combo[0].startswith('brand') and not both_values_are_sizes(combo)]
+        # Фильтрация комбинаций: исключение "brand" и комбинаций с размерами или "sm"
+        filtered_permutations = [combo for combo in permutations_list if
+                                 not combo[0].startswith('brand') and not both_values_are_sizes(combo)]
 
-    # Построение полных ссылок для проверки
-    links_to_check = [f"{parent_url}{first}/{second}/" for first, second
-                      in filtered_permutations]
-    working_links = {}
-    processed_links = 0
-    good_links = 0
-    last_progress_time = time.time()
+        # Построение полных ссылок для проверки
+        links_to_check = [f"{parent_url}{first}/{second}/" for first, second in filtered_permutations]
 
+        # Разбиваем список ссылок на пакеты
+        batches = [links_to_check[i:i + 1000] for i in range(0, len(links_to_check), 1000)]
+
+        processed_links = 0
+        good_links = 0
+        working_links = {}
     with ThreadPoolExecutor(max_workers=num_threads) as executor:
-        futures = {executor.submit(process_link, link, working_links): link for link in links_to_check}
-        for future in futures:
-            future.result()
-            processed_links += 1
-            if future.result():
-                good_links += 1
-            current_time = time.time()
-
-            # Вывод прогресса каждые 5 секунд
-            if current_time - last_progress_time >= 5:
+        for batch in batches:
+            batch_working_links = {}
+            futures = {executor.submit(process_link, link, batch_working_links): link for link in batch}
+            for future in futures:
+                future.result()
+                processed_links += 1
+                if future.result():
+                    good_links += 1
                 progress_percent = (processed_links / len(links_to_check)) * 100
                 print(f"Прогресс: {progress_percent:.2f}% ({processed_links}/{len(links_to_check)})")
                 print(f"Всего рабочих ссылок {good_links} ")
-                last_progress_time = current_time
-
-    # Сохранение рабочих ссылок в файл
+            working_links.update(batch_working_links)
+            del futures
+            del batch
+# Сохранение окончательного списка рабочих ссылок в файл
     with open(file_output, 'w', encoding='utf-8') as json_file:
         json.dump(working_links, json_file, ensure_ascii=False, indent=4)
     print(f"Второй уровень ссылок успешно сохранен в {file_output}")
